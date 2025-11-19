@@ -1,0 +1,24 @@
+- name: install openTofu Ubuntu
+  hosts: tofu-vm
+  become: yes
+
+  tasks:
+    - name: Update cache
+      ansible.builtin.apt:
+        update_cache: yes
+    
+    - name: Ensure snapd is installed
+      ansible.builtin.apt:
+        name: snapd
+        state: present
+    
+    - name: Install OpenTofu via snap
+      ansible.builtin.command: snap install --classic opentofu
+    
+    - name: Check OpenTofu version
+      ansible.builtin.command: "tofu --version"
+      register: tofu_version
+    
+    - name: Print OpenTofu version
+      ansible.builtin.debug:
+        msg: "{{ tofu_version.stdout }}"

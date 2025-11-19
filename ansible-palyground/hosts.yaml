@@ -1,0 +1,5 @@
+---
+google-host:
+  hosts:
+    tofu-vm:
+      ansible_host: gcp-vm
