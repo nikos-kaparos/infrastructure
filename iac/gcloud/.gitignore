@@ -1,0 +1,6 @@
+# Terraform directories
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+.infracost
