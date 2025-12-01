@@ -11,7 +11,7 @@ pipeline{
     stages {
         stage('Run Dagger function tofu-init') {
             steps {
-                sh '''
+                sh """
                     cd "$WORKSPACE/iac-pipeline"
                     pwd
                     dagger call tofu-init \ 
@@ -22,7 +22,7 @@ pipeline{
                         --ssh-public-key=env:SSH_PUBLIC_KEY \
                         --gcp_sa_key=env:GCP_CREDENTIALS \ 
                         --output $WORKSPACE/tofu-inits
-                '''
+                """
             }
         }
     }
