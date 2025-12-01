@@ -1,0 +1,29 @@
+pipeline{
+    agent any
+
+    environment {
+        INFRACOST_API_KEY = credentials('infracost-api-key')
+        SSH_PRIVATE_KEY =  credentials('ssh-private-key')
+        SSH_PUBLIC_KEY = credentials('ssh-public-key')
+        GCP_CREDENTIAL = credentials('gcp-api-key')
+    }
+
+    stages {
+        stage('Run Dagger function tofu-init') {
+            steps {
+                sh '''
+                    cd "$WORKSPACE/iac-pipeline"
+                    pwd
+                    dagger call tofu-init \ 
+                    --src=../iac/gcloud \ 
+                    --budget-eur=40 \ 
+                    --infracost-api-key=env:INFRACOST_API_KEY \
+                    --ssh-private-key=env:SSH_PRIVATE_KEY \
+                    --ssh-public-key=env:SSH_PUBLIC_KEY \
+                    --gcp_sa_key=env:GCP_CREDENTIALS \ 
+                    --output $WORKSPACE/tofu-inits
+                '''
+            }
+        }
+    }
+}
