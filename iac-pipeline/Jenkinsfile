@@ -10,12 +10,9 @@ pipeline{
                     string(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
                 ]){
-                    sh """
+                    sh '''
                     cd "$WORKSPACE/iac-pipeline"
                     pwd
-                    export INFRACOST_API_KEY="${INFRACOST_API_KEY}"
-                    export SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY}"
-                    export SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}"
                     export GCP_CREDENTIALS=\$(cat "\$GCP_KEY_FILE")
 
                     dagger call tofu-init \\
@@ -26,7 +23,7 @@ pipeline{
                     --ssh-public-key=env:SSH_PUBLIC_KEY \\
                     --gcp_sa_key=env:GCP_CREDENTIALS \\
                     --output $WORKSPACE/tofu-inits
-                    """
+                    '''
                 }
             }
         }
