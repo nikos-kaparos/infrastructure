@@ -14,7 +14,7 @@ pipeline{
                 sh '''
                     cd "$WORKSPACE/iac-pipeline"
                     pwd
-                    dagger call tofu-init\ 
+                    dagger call tofu-init \ 
                         --src=../iac/gcloud \ 
                         --budget-eur=40 \ 
                         --infracost-api-key=env:INFRACOST_API_KEY \
