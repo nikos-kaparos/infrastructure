@@ -5,7 +5,7 @@ pipeline{
         INFRACOST_API_KEY = credentials('infracost-api-key')
         SSH_PRIVATE_KEY =  credentials('ssh-private-key')
         SSH_PUBLIC_KEY = credentials('ssh-public-key')
-        GCP_CREDENTIAL = credentials('gcp-api-key')
+        GCP_CREDENTIALS = credentials('gcp-api-key')
     }
 
     stages {
