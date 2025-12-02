@@ -44,20 +44,16 @@ class Iac:
             tofu = (
                 dag.container()
                     .from_("ghcr.io/opentofu/opentofu:latest")
-                    # Δημιούργησε το .ssh directory
+                    # Making .ssh directory
                     .with_exec(["mkdir", "-p", "/root/.ssh"])
-                    # Mount τα SSH keys ως secrets σε temporary location
+                    # Mount to tmp ssh keys 
                     .with_mounted_secret("/tmp/ssh_key", ssh_private_key)
                     .with_mounted_secret("/tmp/ssh_key.pub", ssh_public_key)
-                    # Αντίγραψε τα από το read-only mount στο writable .ssh directory
                     .with_exec(["cp", "/tmp/ssh_key", "/root/.ssh/gcphua_rsa"])
                     .with_exec(["cp", "/tmp/ssh_key.pub", "/root/.ssh/gcphua_rsa.pub"])
-                    # Τώρα μπορείς να κάνεις chmod
                     .with_exec(["chmod", "600", "/root/.ssh/gcphua_rsa"])
                     .with_exec(["chmod", "644", "/root/.ssh/gcphua_rsa.pub"])
-                    # 👉 GCP service account key ως secret file
                     .with_mounted_secret("/tmp/gcp-key.json", gcp_sa_key)
-                    # 👉 ADC env var για τον google provider
                     .with_env_variable("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/gcp-key.json")
                     .with_mounted_directory("/src", src)
                     .with_workdir(f"/src/{env}")
@@ -90,7 +86,7 @@ class Iac:
                 ])
             )
 
-            # Διαβάζω τα αρχεία JSON από το plan_dir
+            # Read JSON from plan_dir
             tofu_outputs_json = await plan_dir.file("plan.json").contents()
             infracost_json = await infracost.file("cost.json").contents()
 
@@ -129,7 +125,7 @@ class Iac:
 
             json_string = json.dumps(env_costs)
 
-        # Δημιουργώ ένα directory object με το αρχείο costs.json
+        # Make directory object with costs.json 
         output_dir = dag.directory().with_new_file("costs.json", json_string)
         return output_dir
         
