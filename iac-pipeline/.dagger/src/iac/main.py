@@ -27,11 +27,10 @@ class Iac:
                         ssh_public_key: dagger.Secret, budget_eur: float = 50.0 ) -> dagger.Directory:
         
         """
-        IaC pipeline χωρισμένο σε: \n
+        IaC pipeline χωρισμένο σε: 
         Container 1: OpenTofu (init, plan, output)
         Container 2: Infracost (breakdown)
-        Από JSON παίρνω public_ip + μηνιαίο κόστος
-        Αν το κόστος είναι <= budget -> tofu apply
+        Από JSON μηνιαίο κόστος από τα tofu files
         """
 
         environments = ["native", "docker-vm", "k8s-vm"]
@@ -91,22 +90,45 @@ class Iac:
                 ])
             )
 
-            # 5) Διαβάζω τα αρχεία JSON από το *ίδιο* directory (plan_dir)
+            # Διαβάζω τα αρχεία JSON από το plan_dir
             tofu_outputs_json = await plan_dir.file("plan.json").contents()
             infracost_json = await infracost.file("cost.json").contents()
+
 
             tofu_data = json.loads(tofu_outputs_json)
             infracost_data = json.loads(infracost_json)
 
-            # Προσαρμόζεις αυτό στο όνομα του output σου (π.χ. vm_ip, instance_ip, οτιδήποτε έχεις στο .tf)
-            # public_ip = tofu_data["public_ip"]
-            
             total_monthly_cost = float(
                 infracost_data["totalMonthlyCost"]
             )
 
-            env_costs[env] = round(total_monthly_cost, 2)
+            resource_changes = tofu_data.get("resource_changes", [])
+
+            instances = []
+
+            for rc in resource_changes:
+                if rc.get("type") == "google_compute_instance":
+                    after = rc.get("change", {}).get("after", {})
+
+                    instances.append({
+                        "address": rc.get("address"),
+                        "type": rc.get("type"),
+                        "provider_name": rc.get("provider_name"),
+                        "actions": rc.get("change", {}).get("actions", []),
+                        "machine_type": after.get("machine_type"),
+                        "project": after.get("project"),
+                        "tags": after.get("tags", []),
+                        "zone": after.get("zone"),
+                        "vm_name": rc.get("name"),
+                    })
+
+            env_costs[env] = {
+                "monthly_cost": round(total_monthly_cost, 2),
+                "instances": instances,
+            }
+
             json_string = json.dumps(env_costs)
+
         # Δημιουργώ ένα directory object με το αρχείο costs.json
         output_dir = dag.directory().with_new_file("costs.json", json_string)
         return output_dir
