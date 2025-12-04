@@ -33,9 +33,8 @@ pipeline{
                     string(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
                     string(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
-                ])
-            }
-            sh '''
+                ]){
+                    sh '''
                     cd "$WORKSPACE/iac-pipeline"
                     pwd
                     export GCP_CREDENTIALS=\$(cat "\$GCP_KEY_FILE")
@@ -48,7 +47,9 @@ pipeline{
                     --ssh-public-key=env:SSH_PUBLIC_KEY \\
                     --deployment-id="$(date +%s)" \\
                     --output ../deployment
-            '''
+                    '''
+                }
+            }
         }
     }
 }
