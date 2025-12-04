@@ -6,8 +6,8 @@ pipeline{
             steps {
                 withCredentials([
                     string(credentialsId: 'infracost-api-key', variable: 'INFRACOST_API_KEY'),
-                    string(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
-                    string(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
+                    file(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
+                    file(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
                 ]){
                     sh '''
