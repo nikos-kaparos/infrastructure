@@ -27,7 +27,6 @@ pipeline{
                 }
             }
         }
-
         stage('Run Dagger function tofu-apply-cheapest'){
             steps{
                 withCredentials([
