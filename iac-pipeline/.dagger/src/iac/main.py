@@ -171,14 +171,14 @@ class Iac:
             # Handle cache issues
             .with_env_variable("DEPLOYMENT_ID", deployment_id)
             # Making .ssh directory
-            # .with_exec(["mkdir", "-p", "/root/.ssh"])
+            .with_exec(["mkdir", "-p", "/root/.ssh"])
             # Mount to tmp ssh keys 
             .with_mounted_secret("/tmp/ssh_key", ssh_private_key)
             .with_mounted_secret("/tmp/ssh_key.pub", ssh_public_key)
-            # .with_exec(["cp", "/tmp/ssh_key", "/root/.ssh/gcphua_rsa"])
-            # .with_exec(["cp", "/tmp/ssh_key.pub", "/root/.ssh/gcphua_rsa.pub"])
-            # .with_exec(["chmod", "600", "/root/.ssh/gcphua_rsa"])
-            # .with_exec(["chmod", "644", "/root/.ssh/gcphua_rsa.pub"])
+            .with_exec(["cp", "/tmp/ssh_key", "/root/.ssh/gcphua_rsa"])
+            .with_exec(["cp", "/tmp/ssh_key.pub", "/root/.ssh/gcphua_rsa.pub"])
+            .with_exec(["chmod", "600", "/root/.ssh/gcphua_rsa"])
+            .with_exec(["chmod", "644", "/root/.ssh/gcphua_rsa.pub"])
             .with_mounted_secret("/tmp/gcp-key.json", gcp_sa_key)
             .with_env_variable("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/gcp-key.json")
             .with_mounted_directory("/src", src)
