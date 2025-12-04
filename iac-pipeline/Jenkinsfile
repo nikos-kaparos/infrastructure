@@ -30,20 +30,17 @@ pipeline{
         stage('Run Dagger function tofu-apply-cheapest'){
             steps{
                 withCredentials([
-                    string(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
-                    string(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
+                    file(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
+                    file(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
                 ]){
                     sh '''
                     cd "$WORKSPACE/iac-pipeline"
                     pwd
-                    export GCP_CREDENTIALS=\$(cat "\$GCP_KEY_FILE")
 
-                    echo "=== First line of SSH_PRIVATE_KEY ==="
-                    printf '%s\n' "$SSH_PRIVATE_KEY" | sed -n '1p'
-
-                    echo "=== Last line of SSH_PRIVATE_KEY ==="
-                    printf '%s\n' "$SSH_PRIVATE_KEY" | sed -n '$p'
+                    export SSH_PRIVATE_KEY=$(cat "$SSH_PRIVATE_KEY_FILE")
+                    export SSH_PUBLIC_KEY=$(cat "$SSH_PUBLIC_KEY_FILE")
+                    export GCP_CREDENTIALS=$(cat "$GCP_KEY_FILE")
 
                     dagger call tofu-apply-cheapest \\
                     --src=../iac/gcloud \\
