@@ -39,6 +39,12 @@ pipeline{
                     pwd
                     export GCP_CREDENTIALS=\$(cat "\$GCP_KEY_FILE")
 
+                    echo "=== First line of SSH_PRIVATE_KEY ==="
+                    printf '%s\n' "$SSH_PRIVATE_KEY" | sed -n '1p'
+
+                    echo "=== Last line of SSH_PRIVATE_KEY ==="
+                    printf '%s\n' "$SSH_PRIVATE_KEY" | sed -n '$p'
+
                     dagger call tofu-apply-cheapest \\
                     --src=../iac/gcloud \\
                     --costs-json=../tofu-inits/costs.json \\
