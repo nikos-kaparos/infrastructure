@@ -30,8 +30,8 @@ pipeline{
         stage('Run Dagger function tofu-apply-cheapest'){
             steps{
                 withCredentials([
-                    file(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
-                    file(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
+                    file(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY_FILE'),
+                    file(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY_FILE')
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
                 ]){
                     sh '''
