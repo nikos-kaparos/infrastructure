@@ -41,13 +41,13 @@ pipeline{
 
                     dagger call tofu-apply-cheapest \\                                                                                                           ─╯
                     --src=../iac/gcloud \\
-                    --costs-json= ..\tofu-inits/costs.json \\
+                    --costs-json=../tofu-inits/costs.json \\
                     --gcp_sa_key=env:GCP_CREDENTIALS \\
                     --ssh-private-key=env:SSH_PRIVATE_KEY \\
                     --ssh-public-key=env:SSH_PUBLIC_KEY \\
                     --deployment-id="$(date +%s)" \\
                     --output ../deployment
-                    '''
+                '''
                 }
             }
         }
