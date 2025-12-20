@@ -26,11 +26,12 @@ class Iac:
     @function
     async def tofu_init(
             self, 
-            src: dagger.Directory, 
+            src: dagger.Directory,
+            gcp_paas: dagger.Directory,
             infracost_api_key: dagger.Secret,  
-            ssh_private_key: dagger.Secret, 
+            ssh_private_key: dagger.Secret,
+            ssh_public_key: dagger.Secret,        
             gcp_sa_key: dagger.Secret,
-            ssh_public_key: dagger.Secret, 
             budget_eur: float = 50.0 
         ) -> dagger.Directory:
         
@@ -41,20 +42,14 @@ class Iac:
         Από JSON μηνιαίο κόστος από τα tofu files
         """
 
-        environments = ["native", "docker-vm", "k8s-vm"]
-
-        env_costs = {}
-        
-        for env in environments:
-            env_dir = src.directory(env)
-
-        # Crate container with tofu and mount the IaC files
+        async def process_environment(base_dir: dagger.Directory, env: str, workdir_prefix: str):
+            """Helper function για να επεξεργαστούμε ένα environment"""
+            
+            # Create container with tofu and mount the IaC files
             tofu = (
                 dag.container()
                     .from_("ghcr.io/opentofu/opentofu:latest")
-                    # Making .ssh directory
                     .with_exec(["mkdir", "-p", "/root/.ssh"])
-                    # Mount to tmp ssh keys 
                     .with_mounted_secret("/tmp/ssh_key", ssh_private_key)
                     .with_mounted_secret("/tmp/ssh_key.pub", ssh_public_key)
                     .with_exec(["cp", "/tmp/ssh_key", "/root/.ssh/gcphua_rsa"])
@@ -63,8 +58,8 @@ class Iac:
                     .with_exec(["chmod", "644", "/root/.ssh/gcphua_rsa.pub"])
                     .with_mounted_secret("/tmp/gcp-key.json", gcp_sa_key)
                     .with_env_variable("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/gcp-key.json")
-                    .with_mounted_directory("/src", src)
-                    .with_workdir(f"/src/{env}")
+                    .with_mounted_directory(workdir_prefix, base_dir)
+                    .with_workdir(f"{workdir_prefix}/{env}")
             ) 
 
             tofu_planed = (
@@ -98,7 +93,6 @@ class Iac:
             tofu_outputs_json = await plan_dir.file("plan.json").contents()
             infracost_json = await infracost.file("cost.json").contents()
 
-
             tofu_data = json.loads(tofu_outputs_json)
             infracost_data = json.loads(infracost_json)
 
@@ -107,35 +101,122 @@ class Iac:
             )
 
             resource_changes = tofu_data.get("resource_changes", [])
+            resources = []
 
-            instances = []
-
-            for rc in resource_changes:
-                if rc.get("type") == "google_compute_instance":
-                    after = rc.get("change", {}).get("after", {})
-
-                    instances.append({
-                        "address": rc.get("address"),
-                        "type": rc.get("type"),
-                        "provider_name": rc.get("provider_name"),
-                        "actions": rc.get("change", {}).get("actions", []),
-                        "machine_type": after.get("machine_type"),
-                        "project": after.get("project"),
-                        "tags": after.get("tags", []),
-                        "zone": after.get("zone"),
-                        "vm_name": rc.get("name"),
-                    })
-
-            env_costs[env] = {
-                "monthly_cost": round(total_monthly_cost, 2),
-                "instances": instances,
+            resource_type_fields = {
+                "google_compute_instance": {
+                    "name_field": "name",
+                    "extract_fields": ["machine_type", "zone", "tags"]
+                },
+                "google_sql_database_instance": {
+                    "name_field": "name",
+                    "extract_fields": ["database_version", "tier", "region", "settings"]
+                },
+                "google_cloud_run_service": {
+                    "name_field": "name",
+                    "extract_fields": ["location", "template"]
+                },
+                "google_storage_bucket": {
+                    "name_field": "name",
+                    "extract_fields": ["location", "storage_class", "versioning"]
+                },
+                "google_cloud_run_v2_service": {
+                    "name_field": "name",
+                    "extract_fields": ["location", "template"]
+                },
+                "google_sql_database": {
+                    "name_field": "name",
+                    "extract_fields": ["instance", "charset", "collation"]
+                }
             }
 
-            json_string = json.dumps(env_costs)
+            for rc in resource_changes:
+                resource_type = rc.get("type", "")
+                
+                # Safe extraction - αποφεύγουμε None values
+                change = rc.get("change") or {}
+                after = change.get("after") or {}
+                
+                # Base info που είναι κοινά για όλα τα resources
+                resource_info = {
+                    "address": rc.get("address", ""),
+                    "type": resource_type,
+                    "provider_name": rc.get("provider_name", ""),
+                    "actions": change.get("actions", []),
+                    "resource_name": rc.get("name", ""),
+                }
+                
+                # Αν γνωρίζουμε τον τύπο, παίρνουμε specific fields
+                if resource_type in resource_type_fields:
+                    config = resource_type_fields[resource_type]
+                    
+                    # Προσθήκη των specific fields
+                    for field in config["extract_fields"]:
+                        resource_info[field] = after.get(field)
+                else:
+                    # Για άγνωστους τύπους, απλά παίρνουμε τα βασικά
+                    resource_info["details"] = after
+                
+                # Πάντα προσθέτουμε το project αν υπάρχει
+                if after and "project" in after:
+                    resource_info["project"] = after.get("project")
+                
+                resources.append(resource_info)
+
+            return {
+                "monthly_cost": round(total_monthly_cost, 2),
+                "resources": resources,
+            }
+
+        # Process all environments
+        gcloud_environments = ["native", "docker-vm", "k8s-vm"]
+        env_costs = {}
+        
+        # Process gcloud environments
+        for env in gcloud_environments:
+            env_costs[f"gcloud-{env}"] = await process_environment(src, env, "/src")
+        
+        gcp_paas_environments = ["cloud-run", "cloud-sql", "cloud-storage"]
+        # Process gcp-paas environments
+        for env in gcp_paas_environments:
+            env_costs[f"gcp-paas-{env}"] = await process_environment(gcp_paas, env, "/gcp-paas")
+
+        infracost_gcp_paas_total = (
+            dag.container()
+            .from_("infracost/infracost:latest")
+            .with_mounted_directory("/gcp-paas", gcp_paas)
+            .with_workdir("/gcp-paas")
+            .with_secret_variable("INFRACOST_API_KEY", infracost_api_key)
+            .with_exec([
+                "sh", "-c",
+                "infracost configure set api_key $INFRACOST_API_KEY"
+            ])
+            .with_exec([
+                "infracost", "breakdown",
+                "--config-file", "infracost.yml",
+                "--format", "json",
+                "--out-file", "gcp-paas-total-cost.json"
+            ])
+        )
+
+        # Read το συνολικό infracost result για gcp-paas
+        gcp_paas_total_json = await infracost_gcp_paas_total.file("gcp-paas-total-cost.json").contents()
+        gcp_paas_total_data = json.loads(gcp_paas_total_json)
+        
+        # Υπολογισμός συνολικού κόστους από το infracost.yml
+        gcp_paas_total_cost = float(gcp_paas_total_data.get("totalMonthlyCost", 0))
+
+        # Add summary
+        result = {
+            "environments": env_costs,
+            "gcp_paas_total_from_config": round(gcp_paas_total_cost, 2),
+        }
+
+        json_string = json.dumps(result, indent=2)
 
         # Make directory object with costs.json 
         output_dir = dag.directory().with_new_file("costs.json", json_string)
-        return output_dir
+        return output_dir   
         
     @function
     async def tofu_apply_cheapest(
