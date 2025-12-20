@@ -1,0 +1,5 @@
+version: 0.1
+
+resource_usage:
+  google_cloud_run_v2_service.this:
+    monthly_requests: 2000000

@@ -1,0 +1,17 @@
+version: 0.1
+
+resource_usage:
+  google_storage_bucket.frontend:
+    # Total data stored in the repository in GB
+    storage_gb: 10          # 10 GiB storage
+
+    # Requests θα γίνονται
+    monthly_class_a_operations: 20000    # Monthly number of class A operations (object adds, bucket/object list).
+    monthly_class_b_operations: 100000   # Monthly number of class B operations (object gets, retrieve bucket/object metadata).
+    # Monthly data transfer from Cloud Storage to the following, in GB:
+    monthly_egress_data_transfer_gb:
+      same_continent: 5 # Same continent.Monthly data transfer from Cloud Storage to the following, in GB:
+      worldwide: 2 # Worldwide excluding Asia, Australia.
+      asia_excluding_china_including_hong_kong: 0 # Asia excluding China, but including Hong Kong.
+      china_excluding_hong_kong: 0
+      australia: 0

@@ -1,0 +1,8 @@
+version: "0.1"
+
+projects:
+  - path: ./cloud-run
+    usage_file: ./cloud-run/infracost-usage.yml
+  - path: ./cloud-sql 
+  - path: ./cloud-storage
+    usage_file: ./cloud-storage/infracost-usage.yml
