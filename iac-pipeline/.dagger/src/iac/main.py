@@ -330,3 +330,34 @@ class Iac:
             json.dumps(deployment_info, indent=2)
         )
         return output_dir
+
+# ------------------------------------------------------------ #
+                            # App Section #
+# ------------------------------------------------------------ #
+
+    @function
+    async def backend_test(self, src: dagger.Directory) -> dagger.Directory:
+        """
+        Runs `mvn clean test` inside ./backend and returns test reports.
+        """
+        backend_dir = src.directory("backend")
+        mvn = (
+            dagger.dag.container()
+            .from_("maven:3.9.9-eclipse-temurin-21-alpine")
+            .with_mounted_directory("/workspace", backend_dir)
+            .with_workdir("/workspace")
+            .with_mounted_cache("/root/.m2", dagger.dag.cache_volume("m2-cache"))
+            .with_env_variable("MAVEN_OPTS", "-Dmaven.repo.local=/root/.m2/repository")
+            # Προαιρετικά: πιο “CI-friendly” output
+            .with_exec(["mvn", "clean", "test"])
+        )
+
+        # Πάρε πίσω τα surefire reports / test reports
+        # (θα βρεις junit xml + logs μέσα εδώ)
+        reports = mvn.directory("target/surefire-reports")
+
+        # Γυρνάμε directory artifact με reports
+        out = dagger.dag.directory().with_directory("surefire-reports", reports)
+        return out
+
+    
