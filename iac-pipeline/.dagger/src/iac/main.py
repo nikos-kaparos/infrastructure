@@ -2,6 +2,7 @@ import json
 import dagger
 from dagger import dag, function, object_type
 from datetime import datetime
+import sys
 
 
 @object_type
@@ -36,15 +37,11 @@ class Iac:
         ) -> dagger.Directory:
         
         """
-        IaC pipeline χωρισμένο σε: 
-        Container 1: OpenTofu (init, plan, output)
-        Container 2: Infracost (breakdown)
-        Από JSON μηνιαίο κόστος από τα tofu files
+            Cloud architecture cost estimation per subfolder with use case senaria.
         """
 
         async def process_environment(base_dir: dagger.Directory, env: str, workdir_prefix: str):
-            """Helper function για να επεξεργαστούμε ένα environment"""
-            
+            """Γενική function για να επεξεργαστούμε ένα environment"""
             # Create container with tofu and mount the IaC files
             tofu = (
                 dag.container()
@@ -168,19 +165,26 @@ class Iac:
                 "resources": resources,
             }
 
-        # Process all environments
+        # Ορίζουμε τα enviroments (ονόματα φακέλων που έχουν τα αρχεία .tf)
         gcloud_environments = ["native", "docker-vm", "k8s-vm"]
         env_costs = {}
         
-        # Process gcloud environments
+        # Υπολογισμός του κόστους για κάθε env ∈ gcloud_environments
+        # με την βοήθεια της process_environment
+        # για να βρούμε το ατομικό κόστος του κάθε env
         for env in gcloud_environments:
             env_costs[f"gcloud-{env}"] = await process_environment(src, env, "/src")
         
+        # Ορίζουμε τα enviroments (ονόματα φακέλων που έχουν τα αρχεία .tf)
         gcp_paas_environments = ["cloud-run", "cloud-sql", "cloud-storage"]
-        # Process gcp-paas environments
+
+        # Υπολογισμός του κόστους για κάθε env ∈ gcp_paas_environments
+        # με την βοήθεια της process_environment 
+        # για να βρούμε το ατομικό κόστος του κάθε env
         for env in gcp_paas_environments:
             env_costs[f"gcp-paas-{env}"] = await process_environment(gcp_paas, env, "/gcp-paas")
 
+        # Συνολικό κόστος με use case senario. 
         infracost_gcp_paas_total = (
             dag.container()
             .from_("infracost/infracost:latest")
@@ -199,10 +203,9 @@ class Iac:
             ])
         )
 
-        # Read το συνολικό infracost result για gcp-paas
+        # Getting total cost in json from infracost.yml use case senario
         gcp_paas_total_json = await infracost_gcp_paas_total.file("gcp-paas-total-cost.json").contents()
         gcp_paas_total_data = json.loads(gcp_paas_total_json)
-        
         # Υπολογισμός συνολικού κόστους από το infracost.yml
         gcp_paas_total_cost = float(gcp_paas_total_data.get("totalMonthlyCost", 0))
 
@@ -214,14 +217,15 @@ class Iac:
 
         json_string = json.dumps(result, indent=2)
 
-        # Make directory object with costs.json 
+        # Return directory with costs.json 
         output_dir = dag.directory().with_new_file("costs.json", json_string)
-        return output_dir   
-        
+        return output_dir
+
     @function
     async def tofu_apply_cheapest(
         self,
         src: dagger.Directory,
+        gcp_paas: dagger.Directory,
         costs_json: dagger.File,
         gcp_sa_key: dagger.Secret,
         ssh_private_key: dagger.Secret,
@@ -232,21 +236,43 @@ class Iac:
         Διαβάζει το costs.json, βρίσκει το φθηνότερο environment
         και κάνει tofu apply σε αυτό.
         """
+
         costs_content = await costs_json.contents()
         env_costs = json.loads(costs_content)
 
+        environments = env_costs["environments"]
+        
+        # Βρήσκει όλα vms
+        vm_envs = {
+            k: v for k, v in environments.items()
+            if k.startswith("gcloud-")
+        }
+        
+        # Bρήσκει το πιο φτοινό vm 
         cheapest_env = min(
-            env_costs.items(),
+            vm_envs.items(),
             key=lambda x: x[1]["monthly_cost"]
         )
 
-        env_name = cheapest_env[0]
-        monthly_cost = cheapest_env[1]["monthly_cost"]
+        vm_name = cheapest_env[0]
+        vm_monthly_cost = cheapest_env[1]["monthly_cost"]
+        
+        # Get tolta cost for paas
+        paas_total = env_costs["gcp_paas_total_from_config"]
+
+        # Create scenaria
+        if paas_total < vm_monthly_cost:
+            env_name = "gcp-paas"
+            monthly_cost = paas_total
+            scenario = "paas"
+        else: 
+            env_name = vm_name
+            monthly_cost = vm_cost
+            scenario = "vm"
 
         result = f"Cheapest environment: {env_name} (€{monthly_cost}/month)\n"
-        
-        #tofu aplly
-        tofu = (
+
+        tofu_base = (
             dag.container()
             .from_("ghcr.io/opentofu/opentofu:latest")
             # Handle cache issues
@@ -262,31 +288,45 @@ class Iac:
             .with_exec(["chmod", "644", "/root/.ssh/gcphua_rsa.pub"])
             .with_mounted_secret("/tmp/gcp-key.json", gcp_sa_key)
             .with_env_variable("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/gcp-key.json")
-            .with_mounted_directory("/src", src)
-            .with_workdir(f"/src/{env_name}")
-            .with_exec(["tofu", "init"])
-            .with_exec(["tofu", "apply", "-auto-approve"])
-            .with_exec(["sh", "-c", "tofu output -json > /tmp/outputs.json"])
-            # .with_exec(["cp", "terraform.tfstate", "/tmp/state.json"])
         )
-        
-        outputs_json = await tofu.file("/tmp/outputs.json").contents()
-        outputs = json.loads(outputs_json)
-        public_ip = outputs.get("public_ip", {}).get("value", "N/A")
 
-        # state_json = tofu.file("/tmp/state.json").contents()
-        # state = json.loads(state_json)
+        if scenario == "vm":
+            tofu = (
+                tofu_base
+                .with_mounted_directory("/src", src)
+                .with_workdir(f"/src/{env_name}")
+                .with_exec(["tofu", "init"])
+                .with_exec(["tofu", "apply", "-auto-approve"])
+                .with_exec(["sh", "-c", "tofu output -json > /tmp/outputs.json"])
+            )
+        else:
+            # Μηχανισμό για url & cred βάσης στο application properties
+            tofu = (
+                tofu_base
+                .with_mounted_directory("/paas", gcp_paas)
+                .with_workdir("/paas")
+                .with_exec(["tofu", "init"])
+                .with_exec(["tofu", "apply", "-auto-approve"])
+                .with_exec(["sh", "-c", "tofu output -json > /tmp/outputs.json"])
+            )
+
+            outputs = await tofu.file("/tmp/outputs.json").contents()
+
 
         deployment_info = {
-            "environment": env_name,
-            "public_ip": public_ip,
-            "monthly_cost": monthly_cost,
-            "deployment_id": deployment_id
-        }
+        "deployment_id": deployment_id,
+        "chosen": env_name,
+        "monthly_cost": monthly_cost,
+        "vm_cheapest": {
+            "name": vm_name,
+            "monthly_cost": vm_monthly_cost,
+        },
+        "paas_total": paas_total,
+        "message": result.strip(),
+    }
 
         output_dir = dag.directory().with_new_file(
-            "deployment.json", 
+            "deployment.json",
             json.dumps(deployment_info, indent=2)
         )
-
         return output_dir
