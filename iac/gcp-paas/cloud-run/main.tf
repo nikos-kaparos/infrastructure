@@ -2,6 +2,7 @@ resource "google_cloud_run_v2_service" "this" {
     name     = var.service_name
     location = "europe-west1"  # ίδια με το region του provider
     
+    # depends_on = [ m ]
 
     template {
         containers {
