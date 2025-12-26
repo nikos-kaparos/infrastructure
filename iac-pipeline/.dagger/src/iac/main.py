@@ -360,4 +360,170 @@ class Iac:
         out = dagger.dag.directory().with_directory("surefire-reports", reports)
         return out
 
+    # Scan from app dir backend and frontend subfolder and genearte report in json format
+    @function
+    async def trivy_scan_app_dir(self, src:dagger.Directory) -> dagger.Directory:
+        """
+        Scan backend source & dependencies with Trivy (filesystem scan)
+        """
+
+        backend_dir = src.directory("backend")
+
+        frontend_dir = src.directory("frontend")
+
+    # Trivy cintainer with mounted directory backend_dir
+        trivy_backend = (
+            dag.container()
+            .from_("aquasec/trivy:latest")
+            .with_mounted_directory ("/src", backend_dir)
+            .with_workdir("/src")
+            .with_mounted_cache("/root/.cache", dag.cache_volume("trivy-cache"))
+            .with_exec([
+            "trivy", "fs",
+            "--severity", "HIGH,CRITICAL",
+            "--exit-code", "0",
+            "--format", "json",
+            "--output", "/tmp/trivy-backend-fs-report.json",
+            "."
+            ])
+        )
+
+        # Trivy cintainer with mounted directory frontend_dir
+        trivy_frontend = (
+            dag.container()
+            .from_("aquasec/trivy:latest")
+            .with_mounted_directory ("/src", frontend_dir)
+            .with_workdir("/src")
+            .with_mounted_cache("/root/.cache", dag.cache_volume("trivy-cache"))
+            .with_exec([
+            "trivy", "fs",
+            "--severity", "HIGH,CRITICAL",
+            "--exit-code", "0",
+            "--format", "json",
+            "--output", "/tmp/trivy-frontend-fs-report.json",
+            "."
+            ])
+        )
+
+        # Get the .json 
+        return (
+            dag.directory()
+            .with_file("trivy-backend-fs-report.json", 
+                trivy_backend.file("/tmp/trivy-backend-fs-report.json"))
+            .with_file("trivy-frontend-fs-report.json", 
+                trivy_frontend.file("/tmp/trivy-frontend-fs-report.json"))
+        )
+
+    @function
+    async def filtering_json_report(
+        self,
+        report_dir: dagger.Directory,
+    ) -> dagger.Directory:
+        """
+        Reads trivy-fs-report.json from report_dir. Creates a vulnerabilities-summary.json
+        with all vulnerability details.
+        """
+        output_dir = dag.directory()
+
+        report_files = [
+            {
+                "input": "trivy-frontend-fs-report.json",
+                "output": "vulnerabilities-frontend.json",
+            },
+            {
+                "input": "trivy-backend-fs-report.json",
+                "output": "vulnerabilities-backend.json",
+            }
+        ]
+
+        for report_file in report_files:
+            try:
+                report = await report_dir.file(report_file["input"]).contents()
+                data = json.loads(report)
+                results = data.get("Results", [])
+
+                vulnerabilities_summary = []
+                total_vulns = 0
+
+                for result in results:
+                    vulnerabilities = result.get("Vulnerabilities", [])
+                    if not vulnerabilities:
+                        continue
+
+                    total_vulns += len(vulnerabilities)
+                    target = result.get("Target", "Unknown")
+
+                for vuln in vulnerabilities:
+                    vuln_id = vuln.get("VulnerabilityID", "N/A")
+                    severity = vuln.get("Severity", "N/A")
+                    pkg_id = vuln.get("PkgID", "N/A")
+                    pkg_name = vuln.get("PkgName", "N/A")
+                    installed_version = vuln.get("InstalledVersion", "N/A")
+                    fixed_version = vuln.get("FixedVersion") or "N/A"
+                    status = vuln.get("Status", "N/A")
+                    title = vuln.get("Title", "")
+
+                    # Add to JSON summary
+                    vulnerabilities_summary.append({
+                        "target": target,
+                        "vulnerability_id": vuln_id,
+                        "severity": severity,
+                        "pkg_id": pkg_id,
+                        "pkg_name": pkg_name,
+                        "installed_version": installed_version,
+                        "fixed_version": fixed_version,
+                        "status": status,
+                        "title": title
+                    })
+
+                # Create summary JSON
+                summary_data = {
+                    "total_vulnerabilities": total_vulns,
+                    "message": f"Found {total_vulns} vulnerabilities" if total_vulns > 0 else "No vulnerabilities detected",
+                    "vulnerabilities": vulnerabilities_summary
+                }
+                summary_json = json.dumps(summary_data, indent=2)
+            
+                output_dir = output_dir.with_new_file(report_file["output"], contents=summary_json)
+            
+            except Exception as e:
+                # Log error but continue processing other files
+                print(f"Error processing {report_file['input']}: {str(e)}")
+                continue
+            
+        return output_dir
+
+
+    @function
+    async def vulnerabilities_check(self, summary_dir: dagger.Directory) -> str:
+        files_to_check = [
+            "vulnerabilities-frontend.json",
+            "vulnerabilities-backend.json"
+        ]
+
+        total_vulnerabilities = 0
+        failed_scans = []
+        
+        for file in files_to_check:
+            try:
+                summary_text = await summary_dir.file(file).contents()
+                summary = json.loads(summary_text)
+
+                vuln_count = int(summary.get("total_vulnerabilities", 0))
+                source = summary.get("source", file) 
+
+                if vuln_count > 0:
+                    total_vulnerabilities += vuln_count
+                    failed_scans.append(f"{source}: {vuln_count} vulnerabilities")
+            except Exception as e:
+                print(f"Warning: Could not process {filename}: {str(e)}")
+                continue
+
+        if total_vulnerabilities > 0:
+            details = ", ".join(failed_scans)
+            raise Exception(
+                f"Security scan failed: found {total_vulnerabilities} total vulnerabilities. "
+                f"Details: {details}"
+            )
     
+        return "OK: No vulnerabilities detected in any scan"
