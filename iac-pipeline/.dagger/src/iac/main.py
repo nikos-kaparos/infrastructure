@@ -527,3 +527,19 @@ class Iac:
             )
     
         return "OK: No vulnerabilities detected in any scan"
+    # Working !!!!!!!!
+    @function
+    async def build_image(self, src: dagger.Directory, 
+        image_name:str, 
+        tag:str, 
+        ) -> str:
+        """
+        Builds a Docker image from a directory that contains a Dockerfile.
+        """
+
+        await (
+            dag.docker()
+            .build(src)
+            .publish(ref=image_name, tags=[tag])
+        )
+        return f"{image_name}:{tag}"
