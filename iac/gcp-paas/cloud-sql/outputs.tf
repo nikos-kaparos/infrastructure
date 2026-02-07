@@ -1,6 +1,11 @@
-output "db_public_ip" {
-    description = "Public ip of Cloud SQL PostreSQL instance"
-    value = google_sql_database_instance.postgres.public_ip_address
+# output "db_public_ip" {
+#     description = "Public ip of Cloud SQL PostreSQL instance"
+#     value = google_sql_database_instance.postgres.public_ip_address
+# }
+
+output "instance_name" {
+    description = "Cloud SQL instance name"
+    value = google_sql_database_instance.postgres.name
 }
 
 output "db_connection_name" {
