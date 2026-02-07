@@ -1,7 +1,7 @@
-output "db_public_ip" {
-    description = "Public ip of Cloud SQL PostreSQL instance"
-    value = module.cloud_sql.db_public_ip
-}
+# output "db_public_ip" {
+#     description = "Public ip of Cloud SQL PostreSQL instance"
+#     value = module.cloud_sql.db_public_ip
+# }
 
 output "db_connection_name" {
     description = "Connection name for Cloud SQL"
