@@ -37,17 +37,17 @@ resource "google_compute_instance" "default" {
   }
 }
 
-resource "google_compute_firewall" "allow-ssh-http-https-custom_ports" {
-    project = "tf-project-1763286414"
-    name = "allow-ssh-http-https-8080"
-    network = "default"
+# resource "google_compute_firewall" "allow-ssh-http-https-custom_ports" {
+#     project = "tf-project-1763286414"
+#     name = "allow-ssh-http-https-8080"
+#     network = "default"
 
-    allow {
-      protocol = "tcp"
-      ports = [ "22", "80", "443", "8080" ]
-    }
+#     allow {
+#       protocol = "tcp"
+#       ports = [ "22", "80", "443", "8080" ]
+#     }
 
-    source_ranges = [ "0.0.0.0/0" ]
+#     source_ranges = [ "0.0.0.0/0" ]
 
-    target_tags = ["allow-ssh-http-https-8080"]
-}
+#     target_tags = ["allow-ssh-http-https-8080"]
+# }
