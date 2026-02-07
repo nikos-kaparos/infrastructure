@@ -5,11 +5,44 @@ resource "google_cloud_run_v2_service" "this" {
     # depends_on = [ m ]
 
     template {
+
+        volumes {
+            name = "cloudsql"
+            cloud_sql_instance {
+                instances = [var.db_connection_name]
+            }
+        }
+
         containers {
             image = var.image
-
             
-                ##################################################
+            ports {
+                container_port = 8080
+            }
+
+            # Mount point για Cloud SQL socket
+            volume_mounts {
+                name       = "cloudsql"
+                mount_path = "/cloudsql"
+            }
+
+
+            env {
+                name  = "SPRING_DATASOURCE_URL"
+                value = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${var.db_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+            }
+
+            env {
+                name  = "SPRING_DATASOURCE_USERNAME"
+                value = var.db_user
+            }
+            env {
+                name  = "SPRING_DATASOURCE_PASSWORD"
+                value = var.db_password
+            }
+
+
+            ##################################################
                 #               Billing Settings                 #
                 # By default gcp is Request-based billing        #
                 # If cpu_idle is true is Request-based billing   #
@@ -25,10 +58,9 @@ resource "google_cloud_run_v2_service" "this" {
             #     #     memory = "512Mi"   # 512 MB RAM
             #     # }
             # }
-            
-            ports {
-                container_port = 8080
-            }
+        }
+        annotations = {
+            "run.googleapis.com/cloudsql-instances" = var.db_connection_name
         }
     }
 
