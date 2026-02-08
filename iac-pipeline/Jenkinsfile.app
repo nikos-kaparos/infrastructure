@@ -64,7 +64,7 @@ pipeline{
                         
                         def gcpKeyContent = readFile(env.GCP_KEY_FILE).trim()
 
-                        sh'''
+                        sh"""
 
                         cd "$WORKSPACE/iac-pipeline"
                         pwd
@@ -80,7 +80,7 @@ pipeline{
                         --github-token env:GITHUB_TOKEN \
                         --gar-username env:GAR_USERNAME \
                         --gar-password env:GAR_PASSWORD
-                        '''
+                        """
                     }
                 }           
             }
