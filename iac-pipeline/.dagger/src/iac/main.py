@@ -424,6 +424,9 @@ class Iac:
         """
         output_dir = dag.directory()
 
+        scan_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
         report_files = [
             {
                 "input": "trivy-frontend-fs-report.json",
