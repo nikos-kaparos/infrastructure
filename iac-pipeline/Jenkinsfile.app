@@ -20,7 +20,7 @@ pipeline{
 
         stage('Scan Vulenrabilites'){
             steps{
-              '''
+              sh '''
               pwd
               dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
               export --path $WORKSPACE/trivy
