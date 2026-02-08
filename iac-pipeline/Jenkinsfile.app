@@ -56,7 +56,7 @@ pipeline{
         stage('Build & Check Backend'){
             steps{
                 withCredentials([
-                    file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
+                    file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE'),
                     string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'),
                     string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
                 ]){        
