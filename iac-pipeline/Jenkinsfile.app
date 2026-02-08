@@ -64,16 +64,13 @@ pipeline{
                         // def gcpKeyContent = readFile(env.GCP_KEY_FILE)
 
                         sh'''
-
-                        export GCP_CREDENTIALS=$(cat "$GCP_KEY_FILE")
-
-
+                        
                         cd "$WORKSPACE/iac-pipeline"
                         pwd
 
                         # Export credentials ως environment variables
                         export GAR_USERNAME='_json_key'
-                        export GAR_PASSWORD='$GCP_CREDENTIALS'
+                        export GAR_PASSWORD='$(cat "$GCP_KEY_FILE")'
 
                         dagger call build-image --src $WORKSPACE/Crowdfunding/backend \
                         --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
