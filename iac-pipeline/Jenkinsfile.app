@@ -55,31 +55,33 @@ pipeline{
 
         stage('Build & Check Backend'){
             steps{
-                withCredentials([
+                script {
+                    withCredentials([
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE'),
                     string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'),
                     string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
-                ]){        
-                    def gcpKeyContent = readFile(env.GCP_KEY_FILE)
+                    ]){        
+                        def gcpKeyContent = readFile(env.GCP_KEY_FILE)
 
-                    sh'''
-                    cd "$WORKSPACE/iac-pipeline"
-                    pwd
+                        sh'''
+                        cd "$WORKSPACE/iac-pipeline"
+                        pwd
 
-                    # Export credentials ως environment variables
-                    export GAR_USERNAME='_json_key'
-                    export GAR_PASSWORD='${gcpKeyContent}'
+                        # Export credentials ως environment variables
+                        export GAR_USERNAME='_json_key'
+                        export GAR_PASSWORD='${gcpKeyContent}'
 
-                    daggerc call build-image 
-                    --src $WORKSPACE/Crowdfunding/backend \
-                    --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
-                    --version v1.0.2 \
-                    --github-username env:GITHUB_USERNAME \
-                    --github-token env:GITHUB_TOKEN \
-                    --gar-username env:GAR_USERNAME \
-                    --gar-password env:GAR_PASSWORD
-                    '''
-                }       
+                        daggerc call build-image 
+                        --src $WORKSPACE/Crowdfunding/backend \
+                        --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
+                        --version v1.0.2 \
+                        --github-username env:GITHUB_USERNAME \
+                        --github-token env:GITHUB_TOKEN \
+                        --gar-username env:GAR_USERNAME \
+                        --gar-password env:GAR_PASSWORD
+                        '''
+                    }
+                }           
             }
         }
     }   
