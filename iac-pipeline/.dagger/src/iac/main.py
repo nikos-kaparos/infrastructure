@@ -688,7 +688,7 @@ class Iac:
             )
             
             # Push to Google Artifact Registry
-            gar_image_ref = f"{gar_registry}/{image_name}:{tag}"
+            gar_image_ref = f"{gar_registry}/{github_image_base}:{tag}"
             gar_pushed = await (
                 container
                 .with_registry_auth(gar_registry.split('/')[0], gar_user, secret=gar_password)
