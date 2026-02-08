@@ -602,7 +602,8 @@ class Iac:
     async def build_image(self, 
         src: dagger.Directory, 
         image_name: str,  # Base image name (χωρίς registry)
-        version: str, 
+        version: str,
+        commit_sha: str,
         github_username: dagger.Secret,
         github_token: dagger.Secret,
         gar_username: dagger.Secret,
@@ -613,16 +614,16 @@ class Iac:
             Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
             """
         
-            # Παίρνουμε το Git commit SHA (7 χαρακτήρες)
-            commit_sha = await (
-                dag.container()
-                .from_("alpine/git:latest")
-                .with_directory("/src", src)
-                .with_workdir("/src")
-                .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
-                .stdout()
-            )
-            commit_sha = commit_sha.strip()
+            # # Παίρνουμε το Git commit SHA (7 χαρακτήρες)
+            # commit_sha = await (
+            #     dag.container()
+            #     .from_("alpine/git:latest")
+            #     .with_directory("/src", src)
+            #     .with_workdir("/src")
+            #     .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
+            #     .stdout()
+            # )
+            # commit_sha = commit_sha.strip()
 
 
             # Δημιουργούμε timestamp: DDMMYY-HHMM
