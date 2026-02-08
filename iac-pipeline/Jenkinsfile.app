@@ -22,8 +22,7 @@ pipeline{
           steps{
             '''
             pwd
-            dagger call trivy-scan-app-dir \ 
-            --src $WORKSPACE/Crowdfunding \
+            dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
             export --path $WORKSPACE/trivy
             '''
           }
