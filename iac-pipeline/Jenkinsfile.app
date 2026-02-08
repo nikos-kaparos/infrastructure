@@ -24,6 +24,7 @@ pipeline{
         stage('Scan Vulenrabilites'){
             steps{
               sh '''
+              cd "$WORKSPACE/iac-pipeline"
               pwd
               dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
               export --path $WORKSPACE/trivy
