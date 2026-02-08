@@ -56,6 +56,12 @@ pipeline{
         stage('Build & Check Backend'){
             steps{
                 script {
+
+                    def commitSha = sh(
+                        script: "cd \$WORKSPACE/Crowdfunding/backend && git rev-parse --short=7 HEAD",
+                        returnStdout: true
+                    ).trim()
+
                     withCredentials([
                     file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE'),
                     string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'),
@@ -74,6 +80,7 @@ pipeline{
                         dagger call build-image --src $WORKSPACE/Crowdfunding/backend \
                         --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
                         --version v1.0.2 \
+                        --commit-sha ${commitSha} \
                         --github-username env:GITHUB_USERNAME \
                         --github-token env:GITHUB_TOKEN \
                         --gar-username env:GAR_USERNAME \
