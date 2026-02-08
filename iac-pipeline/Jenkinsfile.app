@@ -31,5 +31,16 @@ pipeline{
               '''
             }
         }
+
+        stage('Filtering JSON Vulenrabilites'){
+            steps{
+              sh '''
+              cd "$WORKSPACE/iac-pipeline"
+              pwd
+              dagger call filtering-json-report --report-dir $WORKSPACE/Crowdfunding \
+              export --path $WORKSPACE/Crowdfunding/trivy
+              '''
+            }
+        }
     }   
 }
