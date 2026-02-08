@@ -4,5 +4,22 @@
   "sdk": {
     "source": "python"
   },
+  "dependencies": [
+    {
+      "name": "docker",
+      "source": "github.com/purpleclay/daggerverse/docker@docker/v0.6.0",
+      "pin": "2a439e2b327ff561bea05a4edddd5276ac42407f"
+    },
+    {
+      "name": "grype",
+      "source": "github.com/opopops/daggerverse/grype@a6f7ead31d20adf1c014e48ff113cb10fdb0d2f8",
+      "pin": "a6f7ead31d20adf1c014e48ff113cb10fdb0d2f8"
+    },
+    {
+      "name": "trivy",
+      "source": "github.com/jpadams/daggerverse/trivy@trivy/v0.6.0",
+      "pin": "44c178290a412483e785a436aabc46c707842a62"
+    }
+  ],
   "source": ".dagger"
 }

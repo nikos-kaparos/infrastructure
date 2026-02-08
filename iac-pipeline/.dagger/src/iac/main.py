@@ -32,8 +32,7 @@ class Iac:
             infracost_api_key: dagger.Secret,  
             ssh_private_key: dagger.Secret,
             ssh_public_key: dagger.Secret,        
-            gcp_sa_key: dagger.Secret,
-            budget_eur: float = 50.0 
+            gcp_sa_key: dagger.Secret
         ) -> dagger.Directory:
         
         """
@@ -61,8 +60,8 @@ class Iac:
 
             tofu_planed = (
                 tofu
-                    .with_exec(["tofu", "init"])
-                    .with_exec(["tofu", "plan", "-out=plan.tfplan"])
+                    .with_exec(["tofu", "init", "-input=false"])
+                    .with_exec(["tofu", "plan", "-input=false", "-out=plan.tfplan"])
                     .with_exec(["sh", "-c", "tofu show -json plan.tfplan > plan.json"])
             )
             
@@ -86,7 +85,7 @@ class Iac:
                 ])
             )
 
-            # Read JSON from plan_dir
+            # Read JSON from plan_djsonir
             tofu_outputs_json = await plan_dir.file("plan.json").contents()
             infracost_json = await infracost.file("cost.json").contents()
 
@@ -165,7 +164,7 @@ class Iac:
                 "resources": resources,
             }
 
-        # Ορίζουμε τα enviroments (ονόματα φακέλων που έχουν τα αρχεία .tf)
+        # # Ορίζουμε τα enviroments (ονόματα φακέλων που έχουν τα αρχεία .tf)
         gcloud_environments = ["native", "docker-vm", "k8s-vm"]
         env_costs = {}
         
@@ -527,19 +526,158 @@ class Iac:
             )
     
         return "OK: No vulnerabilities detected in any scan"
+    
     # Working !!!!!!!!
-    @function
-    async def build_image(self, src: dagger.Directory, 
-        image_name:str, 
-        tag:str, 
-        ) -> str:
-        """
-        Builds a Docker image from a directory that contains a Dockerfile.
-        """
+    # @function
+    # async def build_image(self, src: dagger.Directory, 
+    #     image_name:str, 
+    #     tag:str, 
+    #     registry_username: dagger.Secret,
+    #     registry_password: dagger.Secret,
+    #     ) -> str:
+    #     """
+    #     Builds a Docker image from a directory that contains a Dockerfile.
+    #     """
 
-        await (
-            dag.docker()
-            .build(src)
-            .publish(ref=image_name, tags=[tag])
-        )
-        return f"{image_name}:{tag}"
+    #     container = dag.docker().build(src).image()
+
+
+    #     rootfs = container.rootfs()
+
+    #     # await container.with_exec(["echo", "build complete"]).stdout()
+    #     scan_result = await (
+    #     dag.container()
+    #     .from_("aquasec/trivy:latest")
+    #     .with_mounted_directory("/scan", rootfs)
+    #     .with_exec([
+    #         "trivy", 
+    #         "rootfs", 
+    #         "--severity", "HIGH,CRITICAL",
+    #         "--format", "json",
+    #         "--output", "/tmp/scan-report.json",  # <-- Πρόσθεσε κόμμα
+    #         "/scan"
+    #     ])
+    #     )
+        
+    #     await scan_result.sync() 
+
+    #     # Διάβασε το JSON file
+    #     scan_output = await scan_result.file("/tmp/scan-report.json").contents()
+        
+    #     # Parse το JSON
+    #     scan_results = json.loads(scan_output)
+        
+    #     # Βρες vulnerabilities
+    #     vulnerabilities = []
+    #     for result in scan_results.get("Results", []):
+    #         vulns = result.get("Vulnerabilities", [])
+    #         if vulns:
+    #             vulnerabilities.extend(vulns)
+
+    #     if vulnerabilities:
+    #         vuln_count = len(vulnerabilities)
+
+    #         error_msg = (
+    #         f" BUILD FAILED: Found {vuln_count} vulnerabilities\n"
+    #         f"Fix the vulnerabilities before building!"
+    #         )
+    #         raise Exception(error_msg)
+        
+    #     registry = image_name.split('/')[0]
+
+    #     # Κάνε plaintext τα secrets
+    #     username = await registry_username.plaintext()
+
+    #     full_image_ref = f"{image_name}:{tag}"
+
+    #     pushed_ref = await (
+    #         container
+    #         .with_registry_auth(registry, username,  secret=registry_password )
+    #         .publish( full_image_ref)
+    #     )
+
+    #     return f"BUILD & PUSH SUCCESS!\nImage: {image_name}:{tag}\nRef: {pushed_ref}"
+
+    @function
+    async def build_image(self, 
+        src: dagger.Directory, 
+        image_name: str,  # Base image name (χωρίς registry)
+        tag: str,
+        github_username: dagger.Secret,
+        github_token: dagger.Secret,
+        gar_username: dagger.Secret,
+        gar_password: dagger.Secret,
+        gar_registry: str = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo",
+    ) -> str:
+            """
+            Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
+            """
+        
+        # Build image
+            container = dag.docker().build(src).image()
+            rootfs = container.rootfs()
+
+            # Security scan με Trivy
+            scan_result = await (
+                dag.container()
+                .from_("aquasec/trivy:latest")
+                .with_mounted_directory("/scan", rootfs)
+                .with_exec([
+                    "trivy", 
+                    "rootfs", 
+                    "--severity", "HIGH,CRITICAL",
+                    "--format", "json",
+                    "--output", "/tmp/scan-report.json",
+                    "/scan"
+                ])
+            )
+            
+            await scan_result.sync()
+            scan_output = await scan_result.file("/tmp/scan-report.json").contents()
+            scan_results = json.loads(scan_output)
+            
+            # Check vulnerabilities
+            vulnerabilities = []
+            for result in scan_results.get("Results", []):
+                vulns = result.get("Vulnerabilities", [])
+                if vulns:
+                    vulnerabilities.extend(vulns)
+
+            if vulnerabilities:
+                vuln_count = len(vulnerabilities)
+                error_msg = (
+                    f"BUILD FAILED: Found {vuln_count} vulnerabilities\n"
+                    f"Fix the vulnerabilities before building!"
+                )
+                raise Exception(error_msg)
+            
+            # Get plaintext credentials
+            gh_username = await github_username.plaintext()
+            gar_user = await gar_username.plaintext()
+            
+            # Extract registry and image from full image_name
+            github_registry = image_name.split('/')[0]  # "ghcr.io"
+            github_image_base = '/'.join(image_name.split('/')[1:])
+            
+            # Push to GitHub Container Registry
+            github_image_ref = f"{image_name}:{tag}"
+            github_pushed = await (
+                container
+                .with_registry_auth(github_registry, gh_username, secret=github_token)
+                .publish(github_image_ref)
+            )
+            
+            # Push to Google Artifact Registry
+            gar_image_ref = f"{gar_registry}/{image_name}:{tag}"
+            gar_pushed = await (
+                container
+                .with_registry_auth(gar_registry.split('/')[0], gar_user, secret=gar_password)
+                .publish(gar_image_ref)
+            )
+            
+            return (
+                f"BUILD & PUSH SUCCESS!\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"GitHub: {github_pushed}\n"
+                f"Google: {gar_pushed}\n"
+            )
