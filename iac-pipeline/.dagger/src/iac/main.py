@@ -424,9 +424,6 @@ class Iac:
         """
         output_dir = dag.directory()
 
-        scan_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-
         report_files = [
             {
                 "input": "trivy-frontend-fs-report.json",
@@ -605,7 +602,7 @@ class Iac:
     async def build_image(self, 
         src: dagger.Directory, 
         image_name: str,  # Base image name (χωρίς registry)
-        tag: str,
+        version: str, 
         github_username: dagger.Secret,
         github_token: dagger.Secret,
         gar_username: dagger.Secret,
@@ -616,6 +613,26 @@ class Iac:
             Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
             """
         
+            # Παίρνουμε το Git commit SHA (7 χαρακτήρες)
+            commit_sha = await (
+                dag.container()
+                .from_("alpine/git:latest")
+                .with_directory("/src", src)
+                .with_workdir("/src")
+                .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
+                .stdout()
+            )
+            commit_sha = commit_sha.strip()
+
+
+            # Δημιουργούμε timestamp: DDMMYY-HHMM
+            now = datetime.now()
+            timestamp = now.strftime("%d%m%y-%H%M")
+        
+            # Συνθέτουμε το final tag
+            tag = f"{version}-{timestamp}-{commit_sha}"
+
+
         # Build image
             container = dag.docker().build(src).image()
             rootfs = container.rootfs()
@@ -680,7 +697,6 @@ class Iac:
             
             return (
                 f"BUILD & PUSH SUCCESS!\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"GitHub: {github_pushed}\n"
                 f"Google: {gar_pushed}\n"
             )
