@@ -61,16 +61,17 @@ pipeline{
                     string(credentialsId: 'GITHUB_USERNAME', variable: 'GITHUB_USERNAME'),
                     string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')
                     ]){        
-                        // def gcpKeyContent = readFile(env.GCP_KEY_FILE)
+                        
+                        def gcpKeyContent = readFile(env.GCP_KEY_FILE).trim()
 
                         sh'''
-                        
+
                         cd "$WORKSPACE/iac-pipeline"
                         pwd
 
                         # Export credentials ως environment variables
                         export GAR_USERNAME='_json_key'
-                        export GAR_PASSWORD='$(cat "$GCP_KEY_FILE")'
+                        export GAR_PASSWORD='${gcpKeyContent}'
 
                         dagger call build-image --src $WORKSPACE/Crowdfunding/backend \
                         --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
