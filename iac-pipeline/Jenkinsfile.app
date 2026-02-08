@@ -37,7 +37,7 @@ pipeline{
               sh '''
               cd "$WORKSPACE/iac-pipeline"
               pwd
-              dagger call filtering-json-report --report-dir $WORKSPACE/Crowdfunding \
+              dagger call filtering-json-report --report-dir $WORKSPACE/Crowdfunding/trivy \
               export --path $WORKSPACE/Crowdfunding/trivy/filtered
               '''
             }
