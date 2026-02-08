@@ -18,13 +18,14 @@ pipeline{
             }
         }
 
-        stage('Scan Vulenrabilites')
-          steps{
-            '''
-            pwd
-            dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
-            export --path $WORKSPACE/trivy
-            '''
-          }
+        stage('Scan Vulenrabilites'){
+            steps{
+              '''
+              pwd
+              dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
+              export --path $WORKSPACE/trivy
+              '''
+            }
+        }
     }   
 }
