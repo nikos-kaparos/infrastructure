@@ -48,8 +48,7 @@ pipeline{
               sh'''
               cd "$WORKSPACE/iac-pipeline"
               pwd
-              dagger call vulnerabilities-check /
-              --summary_dir $WORKSPACE/Crowdfunding/trivy/filtered
+              dagger call vulnerabilities-check --summary_dir $WORKSPACE/Crowdfunding/trivy/filtered
               '''
             }
         }
