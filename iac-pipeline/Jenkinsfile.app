@@ -3,7 +3,10 @@ pipeline{
     stages{
         stage('Clone app project'){
             steps{
-                sh 'git clone https://github.com/nikos-kaparos/Crowdfunding.git'
+                sh '''
+                rm -rf Crowdfunding
+                git clone https://github.com/nikos-kaparos/Crowdfunding.git
+                '''
             }
         }
     
