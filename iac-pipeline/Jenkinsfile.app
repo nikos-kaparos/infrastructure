@@ -27,7 +27,7 @@ pipeline{
               cd "$WORKSPACE/iac-pipeline"
               pwd
               dagger call trivy-scan-app-dir --src $WORKSPACE/Crowdfunding \
-              export --path $WORKSPACE/trivy
+              export --path $WORKSPACE/Crowdfunding/trivy
               '''
             }
         }
