@@ -603,7 +603,6 @@ class Iac:
         src: dagger.Directory, 
         image_name: str,  # Base image name (χωρίς registry)
         version: str,
-        commit_sha: str,
         github_username: dagger.Secret,
         github_token: dagger.Secret,
         gar_username: dagger.Secret,
@@ -631,7 +630,7 @@ class Iac:
             timestamp = now.strftime("%d%m%y-%H%M")
         
             # Συνθέτουμε το final tag
-            tag = f"{version}-{timestamp}-{commit_sha}"
+            tag = f"{version}-{timestamp}"
 
 
         # Build image
