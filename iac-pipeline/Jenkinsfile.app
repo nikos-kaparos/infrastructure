@@ -73,7 +73,7 @@ pipeline{
 
                         # Export credentials ως environment variables
                         export GAR_USERNAME='_json_key'
-                        export GAR_PASSWORD='GCP_CREDENTIALS'
+                        export GAR_PASSWORD='$GCP_CREDENTIALS'
 
                         dagger call build-image --src $WORKSPACE/Crowdfunding/backend \
                         --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
