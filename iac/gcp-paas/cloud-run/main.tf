@@ -26,7 +26,6 @@ resource "google_cloud_run_v2_service" "this" {
                 mount_path = "/cloudsql"
             }
 
-
             env {
                 name  = "SPRING_DATASOURCE_URL"
                 value = "jdbc:postgresql:///${var.db_name}?cloudSqlInstance=${var.db_connection_name}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
