@@ -612,30 +612,28 @@ class Iac:
             """
             Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
             """
-        
-            # # Παίρνουμε το Git commit SHA (7 χαρακτήρες)
-            # commit_sha = await (
-            #     dag.container()
-            #     .from_("alpine/git:latest")
-            #     .with_directory("/src", src)
-            #     .with_workdir("/src")
-            #     .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
-            #     .stdout()
-            # )
-            # commit_sha = commit_sha.strip()
 
+            commit_sha = await (
+                dag.container()
+                .from_("alpine/git:latest")
+                .with_directory("/repo", src)
+                .with_workdir("/repo")
+                .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
+                .stdout()
+            )
+            commit_sha = commit_sha.strip()
 
-            # Δημιουργούμε timestamp: DDMMYY-HHMM
-            now = datetime.now()
-            timestamp = now.strftime("%d%m%y-%H%M")
-        
-            # Συνθέτουμε το final tag
-            tag = f"{version}-{timestamp}"
+            # Συνθέτουμε το final tag με commit SHA
+            tag = f"{version}-{commit_sha}"
 
-
-        # Build image
-            container = dag.docker().build(src).image()
+            # Build image από το backend subdirectory
+            backend_dir = src.directory("backend")
+            container = dag.docker().build(backend_dir).image()
             rootfs = container.rootfs()
+
+        # # Build image
+        #     container = dag.docker().build(src).image()
+        #     rootfs = container.rootfs()
 
             # Security scan με Trivy
             scan_result = await (
