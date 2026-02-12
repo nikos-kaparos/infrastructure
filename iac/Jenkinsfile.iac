@@ -17,7 +17,7 @@ pipeline{
                     --infracost-api-key=env:INFRACOST_API_KEY \
                     --ssh-private-key=env:SSH_PRIVATE_KEY \
                     --ssh-public-key=env:SSH_PUBLIC_KEY \
-                    --gcp-sa-key=file:GCP_KEY_FILE \
+                    --gcp-sa-key=file:$GCP_KEY_FILE \
                     --output ../envs_cost_report
                     '''
                 }
