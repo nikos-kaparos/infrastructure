@@ -33,7 +33,7 @@ pipeline{
                 ]){
                     sh '''
                     cd $WORKSPACE/iac-pipeline
-                    dagger call tofu-apply-cheapest --src=$WORKSPACE/iac/gcloud 
+                    dagger call tofu-apply-cheapest --src=$WORKSPACE/iac/gcloud \
                     --gcp-paas=$WORKSPACE/iac/gcp-paas \
                     --costs-json=WORKSPACE/envs_cost_report/costs.json \
                     --gcp-sa-key=file:$GCP_KEY_FILE \
