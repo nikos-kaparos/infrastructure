@@ -5,11 +5,11 @@ pipeline{
         stage("Tofu-init"){
             steps {
                 withCredentials([
-                    string(credentialsId: 'gcp-sa-json', variable: 'GCP_CREDENTIALS_JSON'),
+                    string(credentialsId: 'gcp-api-key', variable: 'GCP_CREDENTIALS_JSON'),
                     string(credentialsId: 'infracost-api-key', variable: 'INFRACOST_API_KEY'),
                     file(credentialsId: 'ssh-private-key', variable: 'SSH_PRIVATE_KEY'),
                     file(credentialsId: 'ssh-public-key', variable: 'SSH_PUBLIC_KEY'),
-                    file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
+                    // file(credentialsId: 'gcp-api-key', variable: 'GCP_KEY_FILE')
                 ]){
                     sh '''
                     cd $WORKSPACE/iac-pipeline
