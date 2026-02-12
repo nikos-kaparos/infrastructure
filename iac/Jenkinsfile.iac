@@ -13,8 +13,7 @@ pipeline{
                     sh '''
                     cd $WORKSPACE/iac-pipeline
                     
-                    dagger call tofu-init                                                                                                                                                          ─╯
-                    --src=$WORKSPACE/iac/gcloud \
+                    dagger call tofu-init --src=$WORKSPACE/iac/gcloud \
                     --gcp-paas=$WORKSPACE/iac/gcp-paas \
                     --infracost-api-key=env:INFRACOST_API_KEY \
                     --ssh-private-key=env:SSH_PRIVATE_KEY \
