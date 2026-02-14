@@ -73,9 +73,8 @@ pipeline{
                         export GAR_USERNAME='_json_key'
                         export GAR_PASSWORD='${gcpKeyContent}'
 
-                        dagger call build-image --src $WORKSPACE/Crowdfunding/backend \
-                        --image-name ghcr.io/nikos-kaparos/crowdfunding-backend \
-                        --version v1.0.2 \
+                        dagger call build-all-image --src $WORKSPACE/Crowdfunding \
+                        --version v1.1-Jenkins-b-f \
                         --github-username env:GITHUB_USERNAME \
                         --github-token env:GITHUB_TOKEN \
                         --gar-username env:GAR_USERNAME \
