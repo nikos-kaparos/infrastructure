@@ -527,44 +527,145 @@ class Iac:
     
         return "OK: No vulnerabilities detected in any scan"
     
+    # @function
+    # async def build_image(self, 
+    #     src: dagger.Directory, 
+    #     image_name: str,  # Base image name (χωρίς registry)
+    #     version: str,
+    #     github_username: dagger.Secret,
+    #     github_token: dagger.Secret,
+    #     gar_username: dagger.Secret,
+    #     gar_password: dagger.Secret,
+    #     gar_registry: str = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo",
+    # ) -> str:
+    #         """
+    #         Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
+    #         """
+
+    #         commit_sha = await (
+    #             dag.container()
+    #             .from_("alpine/git:latest")
+    #             .with_directory("/repo", src)
+    #             .with_workdir("/repo")
+    #             .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
+    #             .stdout()
+    #         )
+    #         commit_sha = commit_sha.strip()
+
+    #         # Συνθέτουμε το final tag με commit SHA
+    #         tag = f"{version}-{commit_sha}"
+
+    #         # Build image από το backend subdirectory
+    #         backend_dir = src.directory("backend")
+    #         container = dag.docker().build(backend_dir).image()
+    #         rootfs = container.rootfs()
+
+    #         # Security scan με Trivy
+    #         scan_result = await (
+    #             dag.container()
+    #             .from_("aquasec/trivy:latest")
+    #             .with_mounted_directory("/scan", rootfs)
+    #             .with_exec([
+    #                 "trivy", 
+    #                 "rootfs", 
+    #                 "--severity", "HIGH,CRITICAL",
+    #                 "--format", "json",
+    #                 "--output", "/tmp/scan-report.json",
+    #                 "/scan"
+    #             ])
+    #         )
+            
+    #         await scan_result.sync()
+    #         scan_output = await scan_result.file("/tmp/scan-report.json").contents()
+    #         scan_results = json.loads(scan_output)
+            
+    #         # Check vulnerabilities
+    #         vulnerabilities = []
+    #         for result in scan_results.get("Results", []):
+    #             vulns = result.get("Vulnerabilities", [])
+    #             if vulns:
+    #                 vulnerabilities.extend(vulns)
+
+    #         if vulnerabilities:
+    #             vuln_count = len(vulnerabilities)
+    #             error_msg = (
+    #                 f"BUILD FAILED: Found {vuln_count} vulnerabilities\n"
+    #                 f"Fix the vulnerabilities before building!"
+    #             )
+    #             raise Exception(error_msg)
+            
+    #         # Get plaintext credentials
+    #         gh_username = await github_username.plaintext()
+    #         gar_user = await gar_username.plaintext()
+            
+    #         # Extract registry and image from full image_name
+    #         github_registry = image_name.split('/')[0]  # "ghcr.io"
+    #         github_image_base = '/'.join(image_name.split('/')[1:])
+            
+    #         # Push to GitHub Container Registry
+    #         github_image_ref = f"{image_name}:{tag}"
+    #         github_pushed = await (
+    #             container
+    #             .with_registry_auth(github_registry, gh_username, secret=github_token)
+    #             .publish(github_image_ref)
+    #         )
+            
+    #         # Push to Google Artifact Registry
+    #         gar_image_ref = f"{gar_registry}/{github_image_base}:{tag}"
+    #         gar_pushed = await (
+    #             container
+    #             .with_registry_auth(gar_registry.split('/')[0], gar_user, secret=gar_password)
+    #             .publish(gar_image_ref)
+    #         )
+            
+    #         return (
+    #             f"BUILD & PUSH SUCCESS!\n"
+    #             f"GitHub: {github_pushed}\n"
+    #             f"Google: {gar_pushed}\n"
+    #         )
+
     @function
-    async def build_image(self, 
+    async def build_all_images(self, 
         src: dagger.Directory, 
-        image_name: str,  # Base image name (χωρίς registry)
         version: str,
         github_username: dagger.Secret,
         github_token: dagger.Secret,
         gar_username: dagger.Secret,
         gar_password: dagger.Secret,
+        backend_image: str = "ghcr.io/nikos-kaparos/crowdfunding-backend",
+        frontend_image: str = "ghcr.io/nikos-kaparos/crowdfunding-frontend",
         gar_registry: str = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo",
     ) -> str:
-            """
-            Builds a Docker image and pushes to both GitHub Container Registry and Google Artifact Registry.
-            """
-
-            commit_sha = await (
-                dag.container()
-                .from_("alpine/git:latest")
-                .with_directory("/repo", src)
-                .with_workdir("/repo")
-                .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
-                .stdout()
-            )
-            commit_sha = commit_sha.strip()
-
-            # Συνθέτουμε το final tag με commit SHA
-            tag = f"{version}-{commit_sha}"
-
-            # Build image από το backend subdirectory
-            backend_dir = src.directory("backend")
-            container = dag.docker().build(backend_dir).image()
+        """
+        Builds both backend and frontend images in parallel
+        """
+        
+        # Get commit SHA
+        commit_sha = await (
+            dag.container()
+            .from_("alpine/git:latest")
+            .with_directory("/repo", src)
+            .with_workdir("/repo")
+            .with_exec(["git", "rev-parse", "--short=7", "HEAD"])
+            .stdout()
+        )
+        commit_sha = commit_sha.strip()
+        tag = f"{version}-{commit_sha}"
+        
+        # Get plaintext credentials
+        gh_username = await github_username.plaintext()
+        gar_user = await gar_username.plaintext()
+        
+        results = []
+        
+        # Build both services
+        for service, image_name in [("backend", backend_image), ("frontend", frontend_image)]:
+            # Build image
+            service_dir = src.directory(service)
+            container = dag.docker().build(service_dir).image()
             rootfs = container.rootfs()
-
-        # # Build image
-        #     container = dag.docker().build(src).image()
-        #     rootfs = container.rootfs()
-
-            # Security scan με Trivy
+            
+            # Security scan
             scan_result = await (
                 dag.container()
                 .from_("aquasec/trivy:latest")
@@ -583,7 +684,6 @@ class Iac:
             scan_output = await scan_result.file("/tmp/scan-report.json").contents()
             scan_results = json.loads(scan_output)
             
-            # Check vulnerabilities
             vulnerabilities = []
             for result in scan_results.get("Results", []):
                 vulns = result.get("Vulnerabilities", [])
@@ -593,20 +693,16 @@ class Iac:
             if vulnerabilities:
                 vuln_count = len(vulnerabilities)
                 error_msg = (
-                    f"BUILD FAILED: Found {vuln_count} vulnerabilities\n"
+                    f"{service.upper()} BUILD FAILED: Found {vuln_count} vulnerabilities\n"
                     f"Fix the vulnerabilities before building!"
                 )
                 raise Exception(error_msg)
             
-            # Get plaintext credentials
-            gh_username = await github_username.plaintext()
-            gar_user = await gar_username.plaintext()
-            
-            # Extract registry and image from full image_name
-            github_registry = image_name.split('/')[0]  # "ghcr.io"
+            # Extract registry info
+            github_registry = image_name.split('/')[0]
             github_image_base = '/'.join(image_name.split('/')[1:])
             
-            # Push to GitHub Container Registry
+            # Push to GitHub
             github_image_ref = f"{image_name}:{tag}"
             github_pushed = await (
                 container
@@ -614,7 +710,7 @@ class Iac:
                 .publish(github_image_ref)
             )
             
-            # Push to Google Artifact Registry
+            # Push to GAR
             gar_image_ref = f"{gar_registry}/{github_image_base}:{tag}"
             gar_pushed = await (
                 container
@@ -622,8 +718,13 @@ class Iac:
                 .publish(gar_image_ref)
             )
             
-            return (
-                f"BUILD & PUSH SUCCESS!\n"
-                f"GitHub: {github_pushed}\n"
-                f"Google: {gar_pushed}\n"
+            results.append(
+                f" {service.upper()}:\n"
+                f" GitHub: {github_pushed}\n"
+                f" Google: {gar_pushed}"
             )
+        
+        return (
+            f"BUILD & PUSH SUCCESS!\n"
+            f"{chr(10).join(results)}\n"
+        )
