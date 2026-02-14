@@ -33,5 +33,4 @@ variable "db_password" {
     default = "pass_fro_plan"
     sensitive = true
     description = "Db password for app properties sensitive enable"
-
 }
