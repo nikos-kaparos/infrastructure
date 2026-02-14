@@ -34,16 +34,34 @@ variable "image" {
     type        = string
     description = "Το container image για το Cloud Run"
 }
+# --------------------------- #
+#       Cloud RUN Frontend    #  
+# --------------------------- #
+variable "frontend-service_name" {
+    type        = string
+    description = "Το όνομα του Cloud Run service"
+}
+
+variable "frontend-image" {
+    type        = string
+    description = "Το container image για το Cloud Run"
+}
 
 # ------------------- #
 #   Cloud Storage     #  
 # ------------------- #
-variable "region" {
-    type        = string
-    default     = "eu-central1"
-}
+# variable "region" {
+#     type        = string
+#     default     = "eu-central1"
+# }
 
-variable "bucket_name" {
-    type        = string
-    description = "Unique bucket name"
-}
+# variable "bucket_name" {
+#     type        = string
+#     description = "Unique bucket name"
+# }
+
+# variable "build_trigger" {
+#     description = "Trigger from build completion"
+#     type        = string
+#     default     = ""
+# }

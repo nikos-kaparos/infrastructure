@@ -4,5 +4,5 @@ projects:
   - path: ./cloud-run
     usage_file: ./cloud-run/infracost-usage.yml
   - path: ./cloud-sql 
-  - path: ./cloud-storage
-    usage_file: ./cloud-storage/infracost-usage.yml
+  - path: ./cloud-run-frontend
+    usage_file: ./cloud-run-frontend/infracost-usage.yml

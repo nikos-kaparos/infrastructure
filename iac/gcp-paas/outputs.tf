@@ -27,10 +27,17 @@ output "cloud_run_url" {
     value       = module.cloud_run.cloud_run_url
 }
 
+output "cloud_run_url_frontend" {
+    description = "Public URL του Cloud Run service"
+    value       = module.cloud-run-frontend.cloud_run_url_frontend
+}
+
+
+
 # ------------------- #
 #   Cloud Storage     #  
 # ------------------- #
 
-output "frontend_url" {
-    value = module.cloud_storage.frontend_url
-}
+# output "frontend_url" {
+#     value = module.cloud_storage.frontend_url
+# }

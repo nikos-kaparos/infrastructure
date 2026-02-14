@@ -19,7 +19,17 @@ module "cloud_run" {
         # depends_on = [ module.cloud_sql ]
 }
 
-module "cloud_storage" {
-    source = "./cloud-storage"
-        bucket_name= var.bucket_name
+module "cloud-run-frontend" {
+    source = "./cloud-run-frontend"
+    service_name = var.frontend-service_name
+    image = var.frontend-image
+    backend_url   = module.cloud_run.cloud_run_url
 }
+
+# module "cloud_storage" {
+
+#     build_trigger = module.cloud_run.frontend_build_complete
+    
+#     source = "./cloud-storage"
+#         bucket_name= var.bucket_name
+# }
