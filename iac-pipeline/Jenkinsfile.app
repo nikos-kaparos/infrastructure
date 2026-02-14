@@ -73,7 +73,7 @@ pipeline{
                         export GAR_USERNAME='_json_key'
                         export GAR_PASSWORD='${gcpKeyContent}'
 
-                        dagger call build-all-image --src $WORKSPACE/Crowdfunding \
+                        dagger call build_all_images --src $WORKSPACE/Crowdfunding \
                         --version v1.1-Jenkins-b-f \
                         --github-username env:GITHUB_USERNAME \
                         --github-token env:GITHUB_TOKEN \
