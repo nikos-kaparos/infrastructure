@@ -53,7 +53,7 @@ pipeline{
             }
         }
 
-        stage('Build & Check Backend'){
+        stage('Build & Check Images'){
             steps{
                 script {
                     withCredentials([
