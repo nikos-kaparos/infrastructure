@@ -175,7 +175,7 @@ class Iac:
             env_costs[f"gcloud-{env}"] = await process_environment(src, env, "/src")
         
         # Ορίζουμε τα enviroments (ονόματα φακέλων που έχουν τα αρχεία .tf)
-        gcp_paas_environments = ["cloud-run", "cloud-sql", "cloud-storage"]
+        gcp_paas_environments = ["cloud-run", "cloud-sql", "cloud-run-frontend"]
 
         # Υπολογισμός του κόστους για κάθε env ∈ gcp_paas_environments
         # με την βοήθεια της process_environment 
@@ -527,77 +527,6 @@ class Iac:
     
         return "OK: No vulnerabilities detected in any scan"
     
-    # Working !!!!!!!!
-    # @function
-    # async def build_image(self, src: dagger.Directory, 
-    #     image_name:str, 
-    #     tag:str, 
-    #     registry_username: dagger.Secret,
-    #     registry_password: dagger.Secret,
-    #     ) -> str:
-    #     """
-    #     Builds a Docker image from a directory that contains a Dockerfile.
-    #     """
-
-    #     container = dag.docker().build(src).image()
-
-
-    #     rootfs = container.rootfs()
-
-    #     # await container.with_exec(["echo", "build complete"]).stdout()
-    #     scan_result = await (
-    #     dag.container()
-    #     .from_("aquasec/trivy:latest")
-    #     .with_mounted_directory("/scan", rootfs)
-    #     .with_exec([
-    #         "trivy", 
-    #         "rootfs", 
-    #         "--severity", "HIGH,CRITICAL",
-    #         "--format", "json",
-    #         "--output", "/tmp/scan-report.json",  # <-- Πρόσθεσε κόμμα
-    #         "/scan"
-    #     ])
-    #     )
-        
-    #     await scan_result.sync() 
-
-    #     # Διάβασε το JSON file
-    #     scan_output = await scan_result.file("/tmp/scan-report.json").contents()
-        
-    #     # Parse το JSON
-    #     scan_results = json.loads(scan_output)
-        
-    #     # Βρες vulnerabilities
-    #     vulnerabilities = []
-    #     for result in scan_results.get("Results", []):
-    #         vulns = result.get("Vulnerabilities", [])
-    #         if vulns:
-    #             vulnerabilities.extend(vulns)
-
-    #     if vulnerabilities:
-    #         vuln_count = len(vulnerabilities)
-
-    #         error_msg = (
-    #         f" BUILD FAILED: Found {vuln_count} vulnerabilities\n"
-    #         f"Fix the vulnerabilities before building!"
-    #         )
-    #         raise Exception(error_msg)
-        
-    #     registry = image_name.split('/')[0]
-
-    #     # Κάνε plaintext τα secrets
-    #     username = await registry_username.plaintext()
-
-    #     full_image_ref = f"{image_name}:{tag}"
-
-    #     pushed_ref = await (
-    #         container
-    #         .with_registry_auth(registry, username,  secret=registry_password )
-    #         .publish( full_image_ref)
-    #     )
-
-    #     return f"BUILD & PUSH SUCCESS!\nImage: {image_name}:{tag}\nRef: {pushed_ref}"
-
     @function
     async def build_image(self, 
         src: dagger.Directory, 
