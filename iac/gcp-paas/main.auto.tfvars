@@ -11,12 +11,11 @@ db_password = "mypassword"
 #       Cloud RUN     #  
 # ------------------- #
 service_name = "crowdfunding-api"
-image = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo/crowdfunding-backend:2"
+image = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo/crowdfunding-backend:v.1.2.prod-b54729a"
 
 # -------------------- #
 #   Cloud Run Frontend #  
 # -------------------- #
-frontend-service_name = "crowdfunding-run-frontend" 
-frontend-image = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo/crowdfunding-frontend:12"
-
+frontend-service_name = "crowdfunding-run-frontend"
+frontend-image = "europe-west1-docker.pkg.dev/tf-project-1763286414/crowdfunding-repo/crowdfunding-frontend:v.1.2.prod-b54729a"
 
