@@ -2,7 +2,7 @@
 #       Cloud SQL     #  
 # ------------------- #
 
-authorized_ip = "89.210.41.207"
+authorized_ip = "0.0.0.0"
 db_name = "mydatabase"
 db_user = "myuser"
 db_password = "mypassword"  
