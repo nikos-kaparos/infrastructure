@@ -254,6 +254,7 @@ class Iac:
         )
 
         vm_name = cheapest_env[0]
+        folder_name = vm_name.replace("gcloud-", "")  # "docker-vm"  👈
         vm_monthly_cost = cheapest_env[1]["monthly_cost"]
         
         # Get tolta cost for paas
@@ -266,8 +267,11 @@ class Iac:
             scenario = "paas"
         else: 
             env_name = vm_name
-            monthly_cost = vm_cost
+            monthly_cost = vm_monthly_cost
             scenario = "vm"
+        # scenario = "vm"
+        # env_name = vm_name
+        # monthly_cost = vm_monthly_cost
 
         result = f"Cheapest environment: {env_name} (€{monthly_cost}/month)\n"
 
@@ -293,10 +297,12 @@ class Iac:
             tofu = (
                 tofu_base
                 .with_mounted_directory("/src", src)
-                .with_workdir(f"/src/{env_name}")
+                .with_workdir(f"/src/{folder_name}")
                 .with_exec(["tofu", "init"])
                 .with_exec(["tofu", "apply", "-auto-approve"])
                 .with_exec(["sh", "-c", "tofu output -json > /tmp/outputs.json"])
+                .with_exec(["cp", "terraform.tfstate", "/tmp/terraform.tfstate"])
+
             )
         else:
             # Μηχανισμό για url & cred βάσης στο application properties
@@ -307,26 +313,30 @@ class Iac:
                 .with_exec(["tofu", "init"])
                 .with_exec(["tofu", "apply", "-auto-approve"])
                 .with_exec(["sh", "-c", "tofu output -json > /tmp/outputs.json"])
+                .with_exec(["cp", "terraform.tfstate", "/tmp/terraform.tfstate"])
             )
 
-            outputs = await tofu.file("/tmp/outputs.json").contents()
-
+        outputs = await tofu.file("/tmp/outputs.json").contents()
+        tfstate_raw = await tofu.file("/tmp/terraform.tfstate").contents()
 
         deployment_info = {
-        "deployment_id": deployment_id,
-        "chosen": env_name,
-        "monthly_cost": monthly_cost,
-        "vm_cheapest": {
-            "name": vm_name,
-            "monthly_cost": vm_monthly_cost,
-        },
-        "paas_total": paas_total,
-        "message": result.strip(),
-    }
+            "deployment_id": deployment_id,
+            "chosen": env_name,
+            "monthly_cost": monthly_cost,
+            "vm_cheapest": {
+                "name": vm_name,
+                "monthly_cost": vm_monthly_cost,
+            },
+            "paas_total": paas_total,
+            "scenario": scenario,
+            "outputs": outputs,
+            "message": result.strip(),
+        }
 
-        output_dir = dag.directory().with_new_file(
-            "deployment.json",
-            json.dumps(deployment_info, indent=2)
+        output_dir = (
+            dag.directory()
+            .with_new_file("deployment.json", json.dumps(deployment_info, indent=2))
+            .with_new_file("terraform.tfstate", tfstate_raw)
         )
         return output_dir
 
@@ -626,7 +636,6 @@ class Iac:
                 f" GitHub: {github_pushed}\n"
                 f" Google: {gar_pushed}"
             )
-        
         return (
             f"BUILD & PUSH SUCCESS!\n"
             f"{chr(10).join(results)}\n"
